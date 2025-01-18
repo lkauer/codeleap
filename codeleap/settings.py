@@ -25,7 +25,13 @@ SECRET_KEY = 'django-insecure-ke52_!==(554d46fmwzty78+h%suxn0+-knpw5gfddo!otb684
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['lkauer.pythonanywhere.com']
+ALLOWED_HOSTS = [
+    'codeleap-z2f1.onrender.com',
+    'localhost',
+    '127.0.0.1',
+    'lkauer.pythonanywhere.com'
+]
+
 
 
 # Application definition
