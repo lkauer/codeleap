@@ -1,48 +1,63 @@
-from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Post
 from .serializers import PostSerializer
 
-class PostListView(APIView):
-    def get(self, request):
-        posts = Post.objects.all().order_by('-created_at')  # Ordena do mais recente para o mais antigo
-        serializer = PostSerializer(posts, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
-        # Valida e salva o novo post no banco de dados
-        serializer = PostSerializer(data=request.data)
+class PostPagination(PageNumberPagination):
+    """
+    Configuração para paginar os resultados.
+    """
+    page_size = 10  # Número de itens por página.
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+class PostListView(ListCreateAPIView):
+    """
+    View para listar e criar posts com suporte à paginação.
+    """
+    queryset = Post.objects.all().order_by('-created_at')
+    serializer_class = PostSerializer
+    pagination_class = PostPagination
+
+    def create(self, request, *args, **kwargs):
+        """
+        Personaliza a criação de posts.
+        """
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()  # Salva o objeto no banco
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class PostDetailView(APIView):
-    def get(self, request, id):
-        try:
-            post = Post.objects.get(id=id)
-            serializer = PostSerializer(post)
+class PostDetailView(RetrieveUpdateDestroyAPIView):
+    """
+    View para obter, atualizar ou excluir um post específico.
+    """
+    queryset = Post.objects.all()
+    serializer_class = PostSerializer
+    lookup_field = 'id'
+
+    def patch(self, request, *args, **kwargs):
+        """
+        Atualiza parcialmente um post.
+        """
+        partial = kwargs.pop('partial', True)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def patch(self, request, id):
-        try:
-            post = Post.objects.get(id=id)
-            serializer = PostSerializer(post, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
-
-    def delete(self, request, id):
-        try:
-            post = Post.objects.get(id=id)
-            post.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Post.DoesNotExist:
-            return Response({"error": "Post not found"}, status=status.HTTP_404_NOT_FOUND)
+    def delete(self, request, *args, **kwargs):
+        """
+        Deleta um post específico.
+        """
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
