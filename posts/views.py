@@ -44,11 +44,19 @@ class PostDetailView(RetrieveUpdateDestroyAPIView):
 
     def patch(self, request, *args, **kwargs):
         """
-        Atualiza parcialmente um post.
+        Atualiza parcialmente um post. Não é permitido alterar id, username ou created_datetime.
         """
         partial = kwargs.pop('partial', True)
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        data = request.data.copy()
+
+        # Impede a alteração de "id", "username" ou "created_datetime".
+        for field in ['id', 'username', 'created_datetime']:
+            if field in data:
+                return Response({field: "Cannot update this field."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Atualiza o post com os dados enviados, mas não altera os campos protegidos
+        serializer = self.get_serializer(instance, data=data, partial=partial)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
